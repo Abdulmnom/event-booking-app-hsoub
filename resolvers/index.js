@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Event = require('../models/event');
 const event = require('../models/event');
+const Booking = require('../models/booking');
+const { update } = require('lodash');
 const resolvers = {
     Query: {
         events: async () => {
@@ -26,6 +28,19 @@ const resolvers = {
                     throw new UserInputError('لا توجد أحداث لهذا المستخدم');
                 }
                 return events.map(event => ({...event._doc , date: event.date.toDateString()}));
+            } catch (error) {
+                throw error;
+            }
+        },
+        booking: async(_,args,context) => {
+            try {
+                // populate  تحدد الحقل او العمود الذي تريد استرجاعه من قاعدة البيانات
+                const bookings = await Booking.find({ user: context.user._id }).populate('event').populate('user');
+                return bookings.map(booking => ({
+                    ...booking._doc,
+                    createdAt: booking.createdAt.toDateString(),
+                    updatedAt: booking.updatedAt.toDateString(),
+                }));
             } catch (error) {
                 throw error;
             }
@@ -146,7 +161,49 @@ const resolvers = {
                 invalidArgs: args.eventId
             });
         }
-      }
+      },
+        bookEvent: async (_, args, context) => {
+            if (!context.user) {
+                throw new AuthenticationError("يجب تسجيل دخولك");
+            }
+            const event = await Event.findById(args.eventId);
+            if (!event) {
+                throw new UserInputError('هذا الحدث غير موجود');
+            }
+            const  booking = await new Booking({
+                event: event._id,
+                user: context.user._id
+            });
+            try {
+                const result = await booking.save();
+                return { ...result._doc, createdAt: result.createdAt.toISOString() , updatedAt: result.updatedAt.toISOString() };
+            } catch (err) {
+                throw new UserInputError('حدث خطأ أثناء حجز الحدث', {
+                    invalidArgs: args.eventId
+                });
+            }
+        },
+        cancelBooking: async (_, args, context) => {
+            if (!context.user) {
+                throw new AuthenticationError("يجب تسجيل دخولك");
+            }
+            try {
+                const booking = await Booking.findById(args.bookingId).populate('event');
+                if (!booking) {
+                    throw new UserInputError('هذا الحجز غير موجود');
+                }
+                if (booking.user._id.toString() !== context.user._id.toString()) {
+                    throw new AuthenticationError("لا يمكنك الغاء حجز غيرك");
+                }
+                await Booking.deleteOne({ _id: args.bookingId });
+                return booking.event;
+            } catch (err) {
+                throw new UserInputError('حدث خطأ أثناء إلغاء الحجز', {
+                    invalidArgs: args.bookingId
+                });
+            }
+        }
+
     },
 
 

@@ -29,8 +29,8 @@ async function startApolloServer(typeDefs, resolvers) {
         context: async ({ req}) => {
             const auth = req ? req.headers.authorization : null;
             if (auth) {
-                const decodedToken = await jwt.verify(auth, process.env.JWT_SECRET);
-                const user = await User.findById(decodedToken.id);
+                const decodedToken =  jwt.verify(auth, process.env.JWT_SECRET);
+                const user =  await User.findById(decodedToken.userId);
                 if (!user) {
                     throw new Error('User not found');
                 }
