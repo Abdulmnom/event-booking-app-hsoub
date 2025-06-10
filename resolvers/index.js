@@ -1,10 +1,35 @@
 
-const { UserInputError } = require('apollo-server-errors');
+const { UserInputError, AuthenticationError } = require('apollo-server-errors');
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Event = require('../models/event');
+const event = require('../models/event');
 const resolvers = {
     Query: {
+        events: async () => {
+            try {
+                const events = await Event.find({}).populate('creator');
+
+                return events.map(event => ({
+                    ...event._doc,
+                    date: event.date.toDateString(),
+                }));
+            } catch (error) {
+                throw error;
+            }
+        },
+        getUserEvents: async (_, args) => {
+            try {
+                const events = await Event.find({ creator: args.userId}).populate('creator');
+                if (!events || events.length === 0) {
+                    throw new UserInputError('لا توجد أحداث لهذا المستخدم');
+                }
+                return events.map(event => ({...event._doc , date: event.date.toDateString()}));
+            } catch (error) {
+                throw error;
+            }
+        }
 
       
     },
@@ -45,9 +70,9 @@ const resolvers = {
                 }
                 return {
                     userId: user._id,
-                    token: jwt.sign(userForToken , process.env.JWT_SECRET) ,
+                    token: jwt.sign(userForToken , process.env.JWT_SECRET, { expiresIn: '10h' }), // Set token expiration time to 1 hour,
                     username: user.username,
-                    // tokenExpiration: 1 // مدة صلاحية التوكن بالثواني
+                    
                 }
             }
             catch (err) {
@@ -73,15 +98,55 @@ const resolvers = {
             }
             return {
                 userId: user._id,
-                token: jwt.sign(userForToken , process.env.JWT_SECRET) ,
+                token: jwt.sign(userForToken , process.env.JWT_SECRET, { expiresIn: '10h' }), // Set token expiration time to 1 hour,
                 username: user.username,
-                // tokenExpiration: 1 // مدة صلاحية التوكن بالثواني
+                
             }
 
         } catch (err) {
             throw err;
         }
-     }
+     },
+     // context يحتوي على المستخدم الذي قام بتسجيل الدخول
+      createEvent: async (_, args, context)=> {
+        if(!context.user) {
+            throw new AuthenticationError(" !يجب تسجيل دخولك")
+        }
+        const existngEvent = await Event.findOne( { title : args.eventInput.title } );
+        if (existngEvent) {
+            throw new UserInputError('هذا الحدث موجود مسبقا لدينا');
+        }
+        const event = new Event({
+            title: args.eventInput.title,
+            description: args.eventInput.description,
+            date: args.eventInput.date,
+            price: +args.eventInput.price, // تحويل السعر إلى عدد عشري
+            creator: context.user._id // ربط الحدث بالمستخدم الذي أنشأه
+        })
+
+        try {
+            await event.save();
+            // event._doc هو كائن يحتوي على بيانات الحدث المحفوظة في قاعدة البيانات الخاصه ب MongoDB     لانه مخزن كادكيمنت
+            return {...event._doc , data: event.date.toDateString()};
+        } catch (err) {
+            throw new UserInputError('حدث خطأ أثناء إنشاء الحدث', {
+                invalidArgs: args.eventInput
+            });
+        }
+      },
+      deleteEvent : async (_, args ,context ) => {
+        try {
+            await Event.deleteOne( {_id: args.eventId } );
+            const events = await Event.find({}).populate('creator');
+            return events.find({})
+
+
+        } catch (err) {
+            throw new UserInputError('حدث خطأ أثناء حذف الحدث', {
+                invalidArgs: args.eventId
+            });
+        }
+      }
     },
 
 

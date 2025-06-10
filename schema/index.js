@@ -20,7 +20,7 @@ const typeDefs = gql`
         description: String!
         date: String!
         price: Float!
-        creature: User!
+        creator: User!
     }
 
     type Booking {
@@ -44,7 +44,6 @@ const typeDefs = gql`
         userId: ID!
         token: String!
         username: String!
-        # tokenExpiration: Int!
     }
     input UserInput {
         username: String!
