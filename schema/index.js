@@ -35,7 +35,7 @@ const typeDefs = gql`
         createUser(userInput: UserInput!) : AuthData
         createEvent(eventInput: EventInput!): Event
         bookEvent(eventId: ID!): Booking
-        cancelBooking(booking: ID !) : Event
+        cancelBooking(bookingId: ID !) : Event
         login(email: String!, password: String!) : AuthData
         deleteEvent(eventId: ID!): [Event]
     }

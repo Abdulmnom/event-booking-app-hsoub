@@ -7,12 +7,12 @@ const bookingSchema = new Schema({
         type: Schema.Types.ObjectId,
         // ref: 'Event',  يشير الى أن هذا الحقل هو مرجع إلى نموذج آخر "Event"
         ref: 'Event',
-        required: true
+        
     },
     user: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+       
     }
     // timestamps: true // هذا الخيار يضيف حقول createdAt و updatedAt تلقائيًا للمعلومات الزمنية
 }, { timestamps: true });

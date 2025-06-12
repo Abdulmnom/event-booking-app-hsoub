@@ -26,11 +26,13 @@ async function startApolloServer(typeDefs, resolvers) {
         plugins: [
             ApolloServerPluginDrainHttpServer({ httpServer })
         ] ,
-        context: async ({ req}) => {
+       context: async ({ req}) => {
             const auth = req ? req.headers.authorization : null;
             if (auth) {
-                const decodedToken =  jwt.verify(auth, process.env.JWT_SECRET);
-                const user =  await User.findById(decodedToken.userId);
+                const decodedToken = jwt.verify(
+                    auth.slice(4), process.env.JWT_SECRET
+                );
+                const user = await User.findById(decodedToken.id);
                 if (!user) {
                     throw new Error('User not found');
                 }
@@ -39,6 +41,7 @@ async function startApolloServer(typeDefs, resolvers) {
         }
     })
     await server.start()
+    // Apply middleware to connect Apollo Server with Express
     server.applyMiddleware( { app })
     await new Promise(resolve => httpServer.listen({ port: PORT }, resolve));
     console.log(`Server ready at http://localhost:${PORT}${server.graphqlPath}`);

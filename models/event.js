@@ -11,19 +11,19 @@ const eventSchema = new Schema( {
         required: true
     },
     date: {
-        type: String,
+        type: Date,
         required: true
     },
     price: {
         type: Number,
         required: true
     },
-    creature: {
-        type: Schema.Types.ObjectId,
-        ref: 'User'
+    creator: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     }
         // timestamps: true // هذا الخيار يضيف حقول createdAt و updatedAt تلقائيًا للمعلومات الزمنية
-
 }, { timestamps: true });
 
 module.exports = mongoose.model('Event', eventSchema);

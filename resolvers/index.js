@@ -1,4 +1,3 @@
-
 const { UserInputError, AuthenticationError } = require('apollo-server-errors');
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
@@ -6,17 +5,21 @@ const jwt = require('jsonwebtoken');
 const Event = require('../models/event');
 const event = require('../models/event');
 const Booking = require('../models/booking');
+const { transformEvent, transformBooking } = require('./transforms');
+const isLogedIn = require('../middleware/isLogin');
+// const { combineResolvers } = require('graphql-resolvers') // تم الحذف
 const { update } = require('lodash');
 const resolvers = {
     Query: {
         events: async () => {
             try {
                 const events = await Event.find({}).populate('creator');
+                const validEvents = events.filter(event => event.creator); // فقط الأحداث التي لها creator
+                if (!validEvents || validEvents.length === 0) {
+                    throw new UserInputError('لا توجد أحداث متاحة');
+                }
 
-                return events.map(event => ({
-                    ...event._doc,
-                    date: event.date.toDateString(),
-                }));
+                return validEvents.map(event => transformEvent(event));
             } catch (error) {
                 throw error;
             }
@@ -27,37 +30,26 @@ const resolvers = {
                 if (!events || events.length === 0) {
                     throw new UserInputError('لا توجد أحداث لهذا المستخدم');
                 }
-                return events.map(event => ({...event._doc , date: event.date.toDateString()}));
+                return events.map(event => transformEvent(event));
             } catch (error) {
                 throw error;
             }
         },
-        booking: async(_,args,context) => {
+        bookings: async(_,args,context) => {
             try {
-                // populate  تحدد الحقل او العمود الذي تريد استرجاعه من قاعدة البيانات
+                // تحقق من تسجيل الدخول يدوياً
+                if (!context.user) {
+                    throw new AuthenticationError("يجب تسجيل الدخول");
+                }
                 const bookings = await Booking.find({ user: context.user._id }).populate('event').populate('user');
-                return bookings.map(booking => ({
-                    ...booking._doc,
-                    createdAt: booking.createdAt.toDateString(),
-                    updatedAt: booking.updatedAt.toDateString(),
-                }));
+                return bookings.map(booking => transformBooking(booking));
             } catch (error) {
                 throw error;
             }
         }
-
-      
     },
-     Mutation : {
-        /**
-         * Create a new user with the given input data.
-         * @param {object} parent - The parent object.
-         * @param {object} args - The input data for creating a new user.
-         * @property {string} args.userInput.username - The username to be used for the new user.
-         * @property {string} args.userInput.email - The email address to be used for the new user.
-         * @property {string} args.userInput.password - The password to be used for the new user.
-         * @returns {object} A new user object with a JWT token.
-         */
+    Mutation : {
+      
         createUser : async (_, args) => {
 
             try {
@@ -85,7 +77,7 @@ const resolvers = {
                 }
                 return {
                     userId: user._id,
-                    token: jwt.sign(userForToken , process.env.JWT_SECRET, { expiresIn: '10h' }), // Set token expiration time to 1 hour,
+                    token: jwt.sign(userForToken , process.env.JWT_SECRET, /* { expiresIn: '10h' } */),
                     username: user.username,
                     
                 }
@@ -113,7 +105,7 @@ const resolvers = {
             }
             return {
                 userId: user._id,
-                token: jwt.sign(userForToken , process.env.JWT_SECRET, { expiresIn: '10h' }), // Set token expiration time to 1 hour,
+                token: jwt.sign(userForToken , process.env.JWT_SECRET, /* { expiresIn: '10h' } */),
                 username: user.username,
                 
             }
@@ -134,7 +126,7 @@ const resolvers = {
         const event = new Event({
             title: args.eventInput.title,
             description: args.eventInput.description,
-            date: args.eventInput.date,
+            date: new Date(args.eventInput.date), // تحويل التاريخ إلى كائن Date
             price: +args.eventInput.price, // تحويل السعر إلى عدد عشري
             creator: context.user._id // ربط الحدث بالمستخدم الذي أنشأه
         })
@@ -142,8 +134,9 @@ const resolvers = {
         try {
             await event.save();
             // event._doc هو كائن يحتوي على بيانات الحدث المحفوظة في قاعدة البيانات الخاصه ب MongoDB     لانه مخزن كادكيمنت
-            return {...event._doc , data: event.date.toDateString()};
+            return  transformEvent(event);
         } catch (err) {
+            console.error('Create Event Error:', err);
             throw new UserInputError('حدث خطأ أثناء إنشاء الحدث', {
                 invalidArgs: args.eventInput
             });
@@ -152,8 +145,8 @@ const resolvers = {
       deleteEvent : async (_, args ,context ) => {
         try {
             await Event.deleteOne( {_id: args.eventId } );
-            const events = await Event.find({}).populate('creator');
-            return events.find({})
+            
+            return Event.find({});
 
 
         } catch (err) {
@@ -163,20 +156,29 @@ const resolvers = {
         }
       },
         bookEvent: async (_, args, context) => {
+            // تحقق من تسجيل الدخول يدوياً
             if (!context.user) {
-                throw new AuthenticationError("يجب تسجيل دخولك");
+                throw new AuthenticationError("يجب تسجيل الدخول");
             }
-            const event = await Event.findById(args.eventId);
-            if (!event) {
-                throw new UserInputError('هذا الحدث غير موجود');
+            // تحقق مما إذا كان المستخدم قد حجز هذا الحدث بالفعل او لا
+            const existngBooking = await Booking.find({ event: args.eventId }).find({ user: context.user._id }); 
+            if (existngBooking) {
+                throw new UserInputError('  لديك حجز لهذا الحدث مسبقاً');
             }
-            const  booking = await new Booking({
-                event: event._id,
+
+            // تحقق مما إذا كان الحدث موجوداً في قاعدة البيانات
+            const eventExists = await Event.findById(args.eventId);
+            if (!eventExists) {
+                throw new UserInputError('  هذا الحدث غير موجود');
+            }
+            const fetchEvent = await Event.findOne({ _id: args.eventId });
+            const booking = new Booking({
+                event: fetchEvent._id,
                 user: context.user._id
-            });
+            })
             try {
                 const result = await booking.save();
-                return { ...result._doc, createdAt: result.createdAt.toISOString() , updatedAt: result.updatedAt.toISOString() };
+                return transformBooking(result);
             } catch (err) {
                 throw new UserInputError('حدث خطأ أثناء حجز الحدث', {
                     invalidArgs: args.eventId
@@ -184,29 +186,34 @@ const resolvers = {
             }
         },
         cancelBooking: async (_, args, context) => {
+            // تحقق من تسجيل الدخول يدوياً
             if (!context.user) {
-                throw new AuthenticationError("يجب تسجيل دخولك");
+                throw new AuthenticationError("يجب تسجيل الدخول");
             }
             try {
+                console.log('Trying to cancel booking with ID:', args.bookingId);
                 const booking = await Booking.findById(args.bookingId).populate('event');
                 if (!booking) {
                     throw new UserInputError('هذا الحجز غير موجود');
                 }
+                if (args.bookingId === null || args.bookingId === undefined) {
+                    throw new UserInputError('معرف الحجز  فارغ');
+                }
                 if (booking.user._id.toString() !== context.user._id.toString()) {
                     throw new AuthenticationError("لا يمكنك الغاء حجز غيرك");
                 }
-                await Booking.deleteOne({ _id: args.bookingId });
-                return booking.event;
+                const event = {...booking.event._doc, date: booking.event._doc.date.toDateString() }; // تحويل الحدث إلى كائن عادي
+                Booking.deleteOne({ _id: args.bookingId });
+                return event;
             } catch (err) {
                 throw new UserInputError('حدث خطأ أثناء إلغاء الحجز', {
                     invalidArgs: args.bookingId
-                });
+                 },  
+                );
+                
             }
-        }
-
+        },
     },
-
-
 }
 
-module.exports = { resolvers}
+module.exports = { resolvers }
