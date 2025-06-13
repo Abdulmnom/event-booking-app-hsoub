@@ -5,7 +5,6 @@ const typeDefs = gql`
        events: [Event]
        bookings: [Booking]
        getUserEvents(userId: ID!): [Event]
-        getUserBookings(userId: ID!): [Booking]
     }
 
     type User {
@@ -35,6 +34,7 @@ const typeDefs = gql`
         createUser(userInput: UserInput!) : AuthData
         createEvent(eventInput: EventInput!): Event
         bookEvent(eventId: ID!): Booking
+        updateEvent(eventId: ID!, eventInput: EventInput!): Event
         cancelBooking(bookingId: ID !) : Event
         login(email: String!, password: String!) : AuthData
         deleteEvent(eventId: ID!): [Event]
