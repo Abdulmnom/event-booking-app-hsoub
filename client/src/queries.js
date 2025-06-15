@@ -10,7 +10,6 @@ export const EVENTS = gql`
       creator {
         _id
         username
-        email
       }
     }
   }

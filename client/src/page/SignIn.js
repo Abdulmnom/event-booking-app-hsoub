@@ -1,24 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState , useContext , useEffect } from 'react';
 import { useMutation } from '@apollo/client';
-import { data, useNavigate } from 'react-router-dom';
+import {  useNavigate } from 'react-router-dom';
 import { LOGIN } from '../queries';
+import AuthContext from '../context/auth-context';
+
 
 const LoginPage = () => {
+
+    const value = useContext(AuthContext);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
     
     const [login, { loading, error , data}] = useMutation(LOGIN, {
         onCompleted: (data) => {
-            localStorage.setItem('token', data.login.token);
-            localStorage.setItem('userId', data.login.userId);
-            console.log(data.login.token);
+            
             navigate('/events');
         },
         onError: (error) => {
             console.error('Login error:', error);
         }
     });
+    
+    useEffect(() => {
+        if(!loading && data) {
+            const token = data.login.token;
+            const userId = data.login.userId;
+            const username = data.login.username;
+            value.login(token, userId, username);
+        }
+    }, [loading, data  , value]);
 
     if (loading) return <p className="loading">جار التحميل...</p>;
     if (error) return <p className="error">حدث خطأ: {error.message}</p>;

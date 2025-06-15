@@ -1,36 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useMutation } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
 import { CREATE_USER } from '../queries';
+import AuthContext from '../context/auth-context';
 
 const SignUpPage = () => {
   const [username, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState(null);
   const [alert, setAlert] = useState(null);
   const navigate = useNavigate();
+  const authContext = useContext(AuthContext);
 
-  const [createUser, { loading }] = useMutation(CREATE_USER, {
+  const [createUser, { loading, data, error }] = useMutation(CREATE_USER, {
     onCompleted: (data) => {
       setAlert('تم إنشاء الحساب بنجاح');
-      localStorage.setItem('token', data.createUser.token);
-      localStorage.setItem('userId', data.createUser.userId);
-      navigate('/events');
     },
     onError: (error) => {
-      setError(error.message);
+      console.error('خطأ في التسجيل:', error);
     }
   });
 
+  useEffect(() => {
+    if (!loading && data) {
+      const { token, userId, username } = data.createUser;
+      authContext.login(token, userId, username);
+      navigate('/events');
+    }
+  }, [loading, data, authContext, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
     setAlert(null);
 
     if (password !== confirmPassword) {
-      setError('كلمات المرور غير متطابقة');
+      setAlert('كلمات المرور غير متطابقة');
+      return;
+    }
+
+    if (password.length < 6) {
+      setAlert('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
       return;
     }
 
@@ -46,7 +56,7 @@ const SignUpPage = () => {
       });
     } catch (err) {
       console.error('خطأ في التسجيل:', err);
-      setError(err.message);
+      setAlert(err.message);
     }
   };
 
@@ -95,8 +105,8 @@ const SignUpPage = () => {
           />
         </div>
 
-        {error && <p className="error">{error}</p>}
-        {alert && <p className="success">{alert}</p>}
+        {error && <p className="error">{error.message}</p>}
+        {alert && <p className={error ? "error" : "success"}>{alert}</p>}
 
         <div className="form-actions">
           <button type="submit" disabled={loading}>
@@ -106,9 +116,8 @@ const SignUpPage = () => {
       </form>
 
       <button
-        className="btn btn-secondary"
+        className="btn btn-secondary mt-3"
         onClick={() => navigate('/login')}
-        style={{ marginTop: '10px' }}
       >
         لديك حساب؟ تسجيل الدخول
       </button>

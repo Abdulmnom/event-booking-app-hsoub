@@ -17,8 +17,16 @@ PORT = process.env.PORT || 4000;
 
 
 async function startApolloServer(typeDefs, resolvers) {
+
+
     const app = express();
     const httpServer = http.createServer(app);
+
+    // to allow CORS requests from the frontend  يفهم الخادم انه يستقبل طلبات من الواجهة الأمامية باستخدام token
+    app.use((req, res, next) => {
+        res.setHeader('Access-Control-Allow-Origin', process.env.APP_URL);
+        next();
+    })
 
     const server = new ApolloServer({
         typeDefs,

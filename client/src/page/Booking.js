@@ -1,4 +1,7 @@
 import React from 'react';
+// import { BOOKINGS } from '../queries';
+// import AuthContext from '../context/auth-context';
+
 
 const BookingPage = () => {
     return (
