@@ -3,6 +3,7 @@ import { useMutation } from '@apollo/client';
 import {  useNavigate } from 'react-router-dom';
 import { LOGIN } from '../queries';
 import AuthContext from '../context/auth-context';
+import Error from '../componets/Error';
 
 
 const LoginPage = () => {
@@ -10,6 +11,7 @@ const LoginPage = () => {
     const value = useContext(AuthContext);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [alert, setAlert] = useState("");
     const navigate = useNavigate();
     
     const [login, { loading, error , data}] = useMutation(LOGIN, {
@@ -19,6 +21,7 @@ const LoginPage = () => {
         },
         onError: (error) => {
             console.error('Login error:', error);
+            setAlert(error.message);
         }
     });
     
@@ -32,7 +35,6 @@ const LoginPage = () => {
     }, [loading, data  , value]);
 
     if (loading) return <p className="loading">جار التحميل...</p>;
-    if (error) return <p className="error">حدث خطأ: {error.message}</p>;
   
 
     const handleSubmit = async (e) => {
@@ -49,6 +51,7 @@ const LoginPage = () => {
     return (
         <div className="main-content">
             <h1>تسجيل الدخول</h1>
+            {error && <Error error={alert} />}
             <form className="auth-form" onSubmit={handleSubmit}>
                 <div className="form-control">
                     <label htmlFor="email">البريد الإلكتروني</label>

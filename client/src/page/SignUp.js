@@ -3,14 +3,16 @@ import { useMutation } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
 import { CREATE_USER } from '../queries';
 import AuthContext from '../context/auth-context';
+import Error from '../componets/Error';
 
 const SignUpPage = () => {
   const [username, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [alert, setAlert] = useState(null);
+  const [alert, setAlert] = useState("");
   const navigate = useNavigate();
+  
   const authContext = useContext(AuthContext);
 
   const [createUser, { loading, data, error }] = useMutation(CREATE_USER, {
@@ -19,9 +21,9 @@ const SignUpPage = () => {
     },
     onError: (error) => {
       console.error('خطأ في التسجيل:', error);
+      setAlert(error.message);
     }
   });
-
   useEffect(() => {
     if (!loading && data) {
       const { token, userId, username } = data.createUser;
@@ -63,6 +65,7 @@ const SignUpPage = () => {
   return (
     <div className="main-content">
       <h1>تسجيل حساب جديد</h1>
+      {error && <Error error={alert} />}
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="form-control">
           <label htmlFor="name">الاسم</label>
