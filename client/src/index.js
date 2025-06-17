@@ -42,7 +42,7 @@ client.query({
   query: gql`
     query Events {
       events {
-        id
+        _id
         title
         date
         description

@@ -25,6 +25,7 @@ export const LOGIN = gql`
   }
 `;
 
+
 export const BOOKINGS = gql`
   query Bookings {
     bookings {
@@ -32,22 +33,41 @@ export const BOOKINGS = gql`
       event {
         _id
         title
-        description
         date
         price
-        creator {
-          _id
-          username
-          email
-        }
       }
       user {
         _id
         username
-        email
       }
       createdAt
-      updatedAt
+    }
+  }
+`;
+export const CREATE_BOOKING = gql`
+  mutation CreateBooking($eventInput: EventInput!) {
+    createBooking(eventInput: $eventInput) {
+      _id
+      title
+      description
+      date
+      price
+      creator {
+        _id
+        username
+      }
+    }
+  }
+`;
+
+export const CANCEL_BOOKING = gql`
+  mutation CancelBooking($bookingId: ID!) {
+    cancelBooking(bookingId: $bookingId) {
+      _id
+      title
+      description
+      date
+      price
     }
   }
 `;
@@ -64,47 +84,21 @@ export const CREATE_USER = gql`
 
 
 
-export const CANCEL_BOOKING = gql`
-  mutation CancelBooking($bookingId: ID!){
-    cancelBooking(bookingId: $bookingId) {
+
+
+
+export const CREATE_EVENT = gql`
+  mutation CreateEvent($eventInput: EventInput!) {
+    createEvent(eventInput: $eventInput) {
       _id
       title
-    }
-  }
-` 
-
-export const CREATE_BOOKING = gql`
-  mutation CreateBooking($eventId: ID!) {
-    bookEvent(eventId: $eventId) {
-      _id
-      event {
-        _id
-        title
-        description
-        date
-        price
-        creator {
-          _id
-          username
-          email
-        }
-      }
-      user {
+      description
+      date
+      price
+      creator {
         _id
         username
-        email
       }
-      createdAt
-      updatedAt
     }
   }
 `;
-
-// export const EVENT_ADDED = gql`
-//   ${EVENT_FIELDS}
-//   subscription {
-//     eventAdded {
-//       ...EventFields
-//     }
-//   }
-// `
