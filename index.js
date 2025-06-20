@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const User = require('./models/user');
 const { makeExecutableSchema } = require( '@graphql-tools/schema');
-const { useServer } = require('graphql-ws/lib/use/ws');
+const { useServer } = require('graphql-ws/lib/use/ws'); // تم استيراد الوظيفة useServer من مكتبة graphql-ws وهي مسؤولة عن توصيل الخادم بالواجهة الخلفية للمستخدمين.
 
 
 
@@ -47,7 +47,8 @@ async function startApolloServer(typeDefs, resolvers) {
                  async serverWillStart(){
                     return {
                         async drainServer(){
-                            await serverCleanup();
+                            // 
+                            await serverCleanup.dispose();
                         }
                     }
                 }
@@ -72,7 +73,8 @@ async function startApolloServer(typeDefs, resolvers) {
     server.applyMiddleware( { app })
     await new Promise(resolve => httpServer.listen({ port: PORT }, resolve));
     console.log(`Server ready at http://localhost:${PORT}${server.graphqlPath}`);
-    mongoose.connect(process.env.MONGODB_URI, 
+
+    await mongoose.connect(process.env.MONGODB_URI, 
         err => {
             if (err) {
                throw err;
