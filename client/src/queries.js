@@ -102,3 +102,19 @@ export const CREATE_EVENT = gql`
     }
   }
 `;
+
+export const EVENT_ADDED_SUBSCRIPTION = gql`
+  subscription {
+    eventAdded {
+      _id
+      title
+      description
+      date
+      price
+      creator {
+        _id
+        username
+      }
+    }
+  }
+`;

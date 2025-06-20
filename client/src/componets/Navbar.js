@@ -6,10 +6,10 @@ export default function Navbar() {
     const auth = useContext(AuthContext);
 
     return (
-        <nav className="navbar navbar-expand-md navbar-light main-navigation">
+        <nav className="navbar navbar-expand-md navbar-light main-navigation" dir="rtl">
             <div className="container-fluid">
                 <NavLink to="/events" className="navbar-brand">
-                    <h1>مناسباتنا يا زينها</h1>
+                    <h3>مناسباتنا يا زينها</h3>
                 </NavLink>
                 <button 
                     className="navbar-toggler" 
@@ -43,7 +43,7 @@ export default function Navbar() {
                         )}
                         
                         {!auth.token && (
-                            <li className="nav-item">
+                            <li className="btn btn-link">
                                 <NavLink to='/login' className={({ isActive }) => 
                                     isActive ? "nav-link active" : "nav-link"
                                 }>
@@ -56,7 +56,7 @@ export default function Navbar() {
                     {auth.token && (
                         <ul className="navbar-nav">
                             <li className="nav-item">
-                                <NavLink to='#' className="nav-link">
+                                <NavLink to='/profile' className="nav-link">
                                     {auth.username}
                                 </NavLink>
                             </li>

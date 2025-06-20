@@ -8,6 +8,8 @@ import BookingPage from './page/Booking';
 import Navbar from './componets/Navbar';
 import AuthContext from './context/auth-context';
 import { useState } from 'react';
+import ProfilePage from './page/Profile';
+import PrivateRoute from './componets/PrivateRoute';
 
 function App() {
   let [token , setToken] = useState(localStorage.getItem('token') || '');
@@ -59,9 +61,10 @@ function App() {
             {!token && <Route path="/login" element={<LoginPage />} exact />}
             {!token && <Route path="/signup" element={<SignUpPage />} exact />}
             <Route path="/events" element={  <EventPage />} exact />
-            {!token && <Route path='/bookings' element={<Navigate replace to="/login" />}  exact />}
-            {token && <Route path="/bookings" element={<BookingPage />} exact />}
+            <Route path="/bookings" element={<PrivateRoute><BookingPage /></PrivateRoute>} exact />
+          
             <Route path="/" element={<Navigate replace to="/events" />} exact />
+            <Route path="/profile" element={<ProfilePage />} exact />
             
         </Routes>
    

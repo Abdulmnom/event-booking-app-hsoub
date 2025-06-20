@@ -9,6 +9,8 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const User = require('./models/user');
+const { makeExecutableSchema } = require( '@graphql-tools/schema');
+const { useServer } = require('graphql-ws/lib/use/ws');
 
 
 
@@ -28,11 +30,28 @@ async function startApolloServer(typeDefs, resolvers) {
         next();
     })
 
+    const schema = makeExecutableSchema({ typeDefs, resolvers });
+
+    const wsServer = new WebSocketServer({
+        server : httpServer,
+        path: '/graphql'
+    })
+
+    const serverCleanup = useServer({ schema}, wsServer);
     const server = new ApolloServer({
         typeDefs,
         resolvers,
         plugins: [
-            ApolloServerPluginDrainHttpServer({ httpServer })
+            ApolloServerPluginDrainHttpServer({ httpServer }),
+            {
+                 async serverWillStart(){
+                    return {
+                        async drainServer(){
+                            await serverCleanup();
+                        }
+                    }
+                }
+            }
         ] ,
        context: async ({ req}) => {
             const auth = req ? req.headers.authorization : null;
@@ -64,5 +83,7 @@ async function startApolloServer(typeDefs, resolvers) {
     )
     
 }
+
+mongoose.set('strictQuery', false); // أو false حسب رغبتك يعني إذا كانت القيمة صحيحة في الاستعلام فقط سيتم تنفيذها وإلا فلا يتم تنفيذها
 
 startApolloServer(typeDefs , resolvers)

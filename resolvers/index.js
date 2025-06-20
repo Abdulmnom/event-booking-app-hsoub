@@ -8,6 +8,7 @@ const resolvers = merge(
     authResolvers,
     eventResolvers,
     bookingResolvers
+
 );
 
 module.exports = { resolvers };

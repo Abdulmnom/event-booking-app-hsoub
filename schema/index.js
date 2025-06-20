@@ -60,6 +60,11 @@ const typeDefs = gql`
     input BookingInput {
         eventId: ID!
     }
+
+    type Subscription {
+        eventAdded: Event!
+       
+    }
 `;
 
 module.exports = {typeDefs};

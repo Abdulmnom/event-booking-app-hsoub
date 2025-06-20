@@ -3,6 +3,9 @@ const { transformEvent } = require('./transforms');
 const { UserInputError, AuthenticationError } = require('apollo-server-errors');
 const isLogedIn = require('../middleware/isLogin');
 
+// Import the PubSub class Pablish and Subscribe
+const { PubSub } = require('graphql-subscriptions');
+const pubsub = new PubSub();
 const eventResolvers = {
     Query: {
         events: async () => {
@@ -21,58 +24,59 @@ const eventResolvers = {
 
     },
     Mutation: {
-        createEvent: async (_, args, context) => {
-            // التحقق من تسجيل الدخول
-            if (!context.user) {
-                throw new AuthenticationError("يجب تسجيل الدخول!");
-            }
+      createEvent: async (_, args, context) => {
+    if (!context.user) {
+        throw new AuthenticationError("يجب تسجيل الدخول!");
+    }
 
-            // التحقق من صحة المدخلات
-            const { title, description, date, price } = args.eventInput;
-            if (!title || !description || !date || !price) {
-                throw new UserInputError('جميع الحقول مطلوبة');
-            }
+    const { title, description, date, price } = args.eventInput;
+    if (!title || !description || !date || !price) {
+        throw new UserInputError('جميع الحقول مطلوبة');
+    }
 
-            try {
-                // التحقق من عدم وجود حدث بنفس العنوان
-                const existingEvent = await Event.findOne({ title });
-                if (existingEvent) {
-                    throw new UserInputError('هذا الحدث موجود مسبقا');
-                }
+    try {
+        // تحقق من عدم وجود حدث بنفس العنوان
+        const existingEvent = await Event.findOne({ title });
+        if (existingEvent) {
+            throw new UserInputError('هذا الحدث موجود مسبقاً');
+        }
 
-                // التحقق من صحة التاريخ والسعر
-                const eventDate = new Date(date);
-                if (isNaN(eventDate.getTime())) {
-                    throw new UserInputError('تاريخ غير صالح');
-                }
+        // التحقق من صحة التاريخ والسعر
+        const eventDate = new Date(date);
+        if (isNaN(eventDate.getTime())) {
+            throw new UserInputError('تاريخ غير صالح');
+        }
 
-                const eventPrice = parseFloat(price);
-                if (isNaN(eventPrice) || eventPrice <= 0) {
-                    throw new UserInputError('السعر غير صالح');
-                }
+        const eventPrice = parseFloat(price);
+        if (isNaN(eventPrice) || eventPrice <= 0) {
+            throw new UserInputError('السعر غير صالح');
+        }
 
-                // إنشاء الحدث
-                const event = new Event({
-                    title,
-                    description,
-                    date: eventDate,
-                    price: eventPrice,
-                    creator: context.user._id
-                });
+        // إنشاء الحدث
+        const event = new Event({
+            title,
+            description,
+            date: eventDate,
+            price: eventPrice,
+            creator: context.user._id
+        });
 
-                const savedEvent = await event.save();
-                return transformEvent(savedEvent);
+        const savedEvent = await event.save();
+        const createdEvent = transformEvent(savedEvent);
 
-            } catch (err) {
-                console.error('Create Event Error:', err);
-                if (err instanceof UserInputError) {
-                    throw err;
-                }
-                throw new UserInputError('حدث خطأ أثناء إنشاء الحدث', {
-                    invalidArgs: args.eventInput
-                });
-            }
-        },
+        // النشر للمشتركين
+        pubsub.publish('EVENT_ADDED', { eventAdded: createdEvent });
+
+        return createdEvent;
+
+    } catch (err) {
+        console.error('Create Event Error:', err);
+        throw new UserInputError('حدث خطأ أثناء إنشاء الحدث', {
+            invalidArgs: args.eventInput
+        });
+    }
+}
+,
 
         updateEvent: async (_, args, context) => {
             if (!context.user) {
@@ -119,6 +123,11 @@ const eventResolvers = {
                     invalidArgs: args.eventId
                 });
             }
+        }
+    },
+    Subscription: {
+        eventAdded: {
+            subscribe: () => pubsub.asyncIterator(['EVENT_ADDED'])
         }
     }
 };

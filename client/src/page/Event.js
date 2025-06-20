@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useMutation, useQuery, useApolloClient } from "@apollo/client";
-import { EVENTS, CREATE_BOOKING, CREATE_EVENT } from "../queries";
+import { EVENTS, CREATE_BOOKING, CREATE_EVENT , EVENT_ADDED_SUBSCRIPTION } from "../queries";
 import EventItem from "../componets/EventItem";
 import EventModal from "../componets/EventModal";
 import AuthContext from "../context/auth-context";
 import { NavLink } from "react-router-dom";
 import Error from "../componets/Error";
+import { useSubscription } from "@apollo/client";
+import Spinner from "../componets/Spinner";
 
 const EventPage = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -18,6 +20,21 @@ const EventPage = () => {
   const [date, setDate] = useState("");
   const [price, setPrice] = useState("");
   const client = useApolloClient();
+  useSubscription(EVENT_ADDED_SUBSCRIPTION, {
+    onSubscriptionData: async ({ subscriptionData }) => {
+      if (subscriptionData) {
+        const addedEvent = subscriptionData.data.eventAdded;
+        setAlert(`تم انشاء مناسبة جديدة ${addedEvent.title}`);
+      }
+      if(subscriptionData.data.eventAdded.creator._id === value.userId){
+        setAlert("تم انشاء مناسبة جديدة من قبلك");
+      }
+      if(subscriptionData.error) {
+        setAlert("فشل جلب المناسبات الجديدة");
+      }
+    },
+    
+  })
 
   const {
     loading: eventsLoading,
@@ -71,6 +88,7 @@ const EventPage = () => {
       <div className="text-center mt-5">
         <div className="spinner-border" role="status">
           <span className="visually-hidden">جار التحميل...</span>
+          <Spinner />
         </div>
       </div>
     );
